@@ -1,0 +1,64 @@
+lambda = 1;
+dx = lambda * 0.7;
+M = 16;
+theta = linspace(-pi/2, pi/2, 181);
+phi = 0;
+% Linear Radiation Pattern without Amplitude Tapering
+AF_no_tapering = zeros(length(theta), 1);
+for m = 1:M
+    AF_no_tapering = AF_no_tapering + exp(-1j*(2*pi/lambda)*(dx*m*sin(theta')));
+end
+AF_normalized_no_tapering = abs(AF_no_tapering) / max(abs(AF_no_tapering), [], 'all');
+AF_log_no_tapering = 20 * log10(AF_normalized_no_tapering);
+AF_log_no_tapering(AF_log_no_tapering <= -50) = -50;
+x_no_tapering = rad2deg(asin(sin(theta')));
+% Linear Radiation Pattern with Amplitude Tapering using Taylor window
+mainlobe_width = 5;
+taylor_window = taylorwin(M, mainlobe_width);
+ta = taylor_window.^2;
+ta = abs(ta) / max(abs(ta), [], 'all');
+sum_squares_taylor = sum(ta);
+taylor_window_normalized = taylor_window / sqrt(sum_squares_taylor);
+AF_taylor = zeros(length(theta), 1);
+for m = 1:M
+    if m == 1
+        amplitude_tapering = 0;
+    else
+        amplitude_tapering = taylor_window_normalized(m);
+    end
+    AF_taylor = AF_taylor + amplitude_tapering * exp(-1j*(2*pi/lambda)*(dx*m*sin(theta')*cos(phi)));
+end
+AF_normalized_taylor = abs(AF_taylor) / max(abs(AF_taylor), [], 'all');
+AF_log_taylor = 20 * log10(AF_normalized_taylor);
+AF_log_taylor(AF_log_taylor <= -50) = -50;
+x_taylor = rad2deg(asin(sin(theta') * cos(phi)));
+% Linear Radiation Pattern with Amplitude Tapering using Chebyshev window
+cheb_window = chebwin(M, 19); 
+cheb = cheb_window.^2;
+sum_squares_cheb = sum(cheb);
+cheb_window_normalized = cheb_window / sqrt(sum_squares_cheb);
+AF_cheb = zeros(length(theta), 1);
+for m = 1:M
+    if m == 1
+        amplitude_tapering = 0;
+    else
+        amplitude_tapering = cheb_window_normalized(m);
+    end
+    
+    AF_cheb = AF_cheb + amplitude_tapering * exp(-1j*(2*pi/lambda)*(dx*m*sin(theta')*cos(phi)));
+end
+AF_normalized_cheb = abs(AF_cheb) / max(abs(AF_cheb), [], 'all');
+AF_log_cheb = 20 * log10(AF_normalized_cheb);
+AF_log_cheb(AF_log_cheb <= -50) = -50;
+x_cheb = rad2deg(asin(sin(theta') * cos(phi)));
+% Plotting
+figure;
+plot(x_no_tapering, AF_log_no_tapering, 'DisplayName', 'No Tapering');
+hold on;
+plot(x_taylor, AF_log_taylor, 'DisplayName', 'Taylor Window');
+plot(x_cheb, AF_log_cheb, 'DisplayName', 'Chebyshev Window');
+xlabel('Elevation (degrees)');
+ylabel('Normalized Amplitude (dB)');
+title('Comparison of Linear Radiation Patterns');
+legend;
+hold off;
